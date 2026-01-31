@@ -94,5 +94,3 @@ def process_idea(raw_text: str):
             "error": "LLM returned invalid JSON",
             "raw_output": llm_output
         }
-
-

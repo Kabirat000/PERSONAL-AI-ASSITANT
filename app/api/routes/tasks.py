@@ -1,10 +1,18 @@
 from fastapi import APIRouter
+from pydantic import BaseModel
+from app.services.task_service import extract_tasks
 
 router = APIRouter()
 
-@router.get("/")
-def list_tasks():
+
+class TaskExtractRequest(BaseModel):
+    content: str
+
+
+@router.post("/extract")
+def extract_tasks_endpoint(request: TaskExtractRequest):
+    tasks = extract_tasks(request.content)
     return {
-        "message": "Tasks endpoint is working",
-        "tasks": []
+        "count": len(tasks),
+        "tasks": tasks
     }
