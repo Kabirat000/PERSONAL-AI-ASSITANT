@@ -1,42 +1,85 @@
+"""
+Task extraction service.
+Extracts actionable tasks from messy thoughts using LLM.
+"""
 import json
-from app.services.llm_service import run_llm  # Correct import
-from app.prompts.prompt import load_prompt  # Correct import path
+import logging
+from pathlib import Path
+from typing import Any
 
-def extract_tasks(thought: str) -> list[dict]:
-    # Load the prompt with the thought (user input)
-    prompt = load_prompt(
-        "task_extract_prompt.txt",  # Ensure the prompt file exists
-        thought=thought  # Pass thought as a keyword argument
-    )
+from app.services.llm_service import run_llm_structured
 
-    # Call the LLM to extract tasks
-    response = run_llm(prompt, thought)
+logger = logging.getLogger(__name__)
 
+PROMPT_PATH = Path(__file__).parent.parent / "prompts" / "task_extract_prompt.txt"
+
+
+def extract_tasks(thought: str) -> list[dict[str, Any]]:
+    """
+    Extract actionable tasks from a messy thought.
+
+    Args:
+        thought: Raw user thought/input text
+
+    Returns:
+        List of task dicts with 'task' and 'priority' keys
+    """
     try:
-        # Try to parse the response from the LLM
-        data = json.loads(response)
-        return data.get("tasks", [])
-    except json.JSONDecodeError:
-        # If response is not valid JSON, return an empty list
+        system_prompt = PROMPT_PATH.read_text()
+    except FileNotFoundError:
+        logger.error(f"Prompt file not found: {PROMPT_PATH}")
         return []
-import json
-from app.services.llm_service import run_llm  # Correct import
-from app.prompts.prompt import load_prompt  # Correct import path
 
-def extract_tasks(thought: str) -> list[dict]:
-    # Load the prompt with the thought (user input)
-    prompt = load_prompt(
-        "task_extract_prompt.txt",  # Ensure the prompt file exists
-        thought=thought  # Pass thought as a keyword argument
-    )
-
-    # Call the LLM to extract tasks
-    response = run_llm(prompt, thought)
+    # Inject the thought into the prompt template
+    formatted_prompt = system_prompt.replace("{thought}", thought)
 
     try:
-        # Try to parse the response from the LLM
+        response = run_llm_structured(
+            system_prompt=formatted_prompt,
+            user_input=thought,
+        )
         data = json.loads(response)
         return data.get("tasks", [])
-    except json.JSONDecodeError:
-        # If response is not valid JSON, return an empty list
+    except json.JSONDecodeError as e:
+        logger.warning(f"Failed to parse task response: {e}")
+        return []
+    except Exception as e:
+        logger.error(f"Task extraction failed: {e}")
+        return []
+
+
+def extract_tasks_with_context(
+    thought: str,
+    context: list[str] | None = None,
+) -> list[dict[str, Any]]:
+    """
+    Extract tasks with optional context from related ideas.
+
+    Args:
+        thought: Raw user thought/input text
+        context: Optional list of related context strings
+
+    Returns:
+        List of task dicts
+    """
+    try:
+        system_prompt = PROMPT_PATH.read_text()
+    except FileNotFoundError:
+        return []
+
+    formatted_prompt = system_prompt.replace("{thought}", thought)
+
+    if context:
+        context_block = "\n\nContext from related notes:\n" + "\n".join(f"- {c}" for c in context)
+        formatted_prompt += context_block
+
+    try:
+        response = run_llm_structured(
+            system_prompt=formatted_prompt,
+            user_input=thought,
+        )
+        data = json.loads(response)
+        return data.get("tasks", [])
+    except Exception as e:
+        logger.error(f"Task extraction with context failed: {e}")
         return []

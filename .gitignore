@@ -6,6 +6,22 @@ __pycache__/
 # Environment variables
 .env
 
+.env.prod
+.env.dev
+.env.test
+.env.local
+.env.prod.local
+.env.dev.local
+.env.test.local
+.env.prod.example
+.env.dev.example
+.env.test.example
+.env.local.example
+.env.prod.example
+.env.dev.example
+.env.test.example
+.env.local.example
+
 # Docker
 *.log
 
